@@ -1,0 +1,44 @@
+# version: '1.0'
+# services:
+#   db:
+#     image: postgres:latest
+#     restart: always
+#     environment:
+#       - POSTGRES_USER=postgres
+#       - POSTGRES_PASSWORD=postgres
+#       - POSTGRES_DB=spicedb
+#     ports:
+#       - '5432:5432'
+#     volumes: 
+#       - db:/var/lib/postgresql/data
+# volumes:
+#   db:
+#     driver: local
+
+# version: "1.0"
+
+services:
+  spicedb:
+    image: "authzed/spicedb"
+    command: "serve"
+    restart: "always"
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+      - "50051:50051"
+    environment:
+      - "SPICEDB_GRPC_PRESHARED_KEY=mylocal"
+      - "SPICEDB_DATASTORE_ENGINE=postgres"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:postgres@192.168.154.215:5432/auth_dev?sslmode=disable"
+    depends_on:
+      - 'migrate'
+
+  migrate:
+    image: "authzed/spicedb"
+    command: "migrate head"
+    restart: "on-failure"
+    environment:
+      - "SPICEDB_DATASTORE_ENGINE=postgres"
+      - "SPICEDB_DATASTORE_CONN_URI=postgres://postgres:postgres@192.168.154.215:5432/auth_dev?sslmode=disable"
+      
+    # spicedb migrate head --datastore-engine=postgres --datastore-conn-uri="postgres://postgres:postgres@192.168.254.47:5432/spicedb?sslmode=disable"

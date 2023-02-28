@@ -1,0 +1,144 @@
+schema: |-
+  /** Definitions for institutional portal */
+  definition user{}
+
+  definition workgroup{
+      relation user: user
+  }
+
+  definition role{
+      relation workgroup: workgroup
+      permission allowed = workgroup -> user
+  }
+
+  definition res_perm{
+      relation role: role
+      permission create_user = role -> allowed
+      permission view_user = role -> allowed
+      permission edit_user = role -> allowed
+      permission delete_user = role -> allowed
+      permission create_terminal = role -> allowed
+      permission create_terminal_snapshot = role -> allowed
+  }
+
+  /** Definitions for merchant portal */
+
+  definition merchant_admin{}
+
+  definition merchant {
+      relation admin: merchant_admin
+  }
+
+  definition outlet {
+      relation merchant: merchant
+
+      permission allowed = merchant -> admin
+      permission view_outlet = merchant -> admin
+  }
+
+  definition device_profile {
+      relation outlet: outlet
+
+      permission view_device_profile = outlet -> allowed
+      permission view_transaction = outlet -> allowed + view_device_profile
+      permission view_terminal = outlet -> allowed + view_device_profile
+      permission view_device_history = outlet -> allowed + view_device_profile
+      permission view_pos_permission = outlet -> allowed + view_device_profile
+  }
+
+
+  /** Resources */
+
+  definition resource/user{
+      relation creator: res_perm#create_user
+      relation editor: res_perm#edit_user
+      relation reader: res_perm#view_user
+      relation deleter: res_perm#delete_user
+
+      permission create = creator -> create_user
+      permission edit = editor -> edit_user + create
+      permission view = reader -> view_user + edit
+      permission delete = deleter -> delete_user
+  }
+
+  definition resource/transaction{
+      relation creator: device_profile
+
+      permission view = creator -> view_transaction
+  }
+
+  definition resource/terminal{
+      relation creator: res_perm#create_terminal
+      relation assigned_profile: device_profile
+
+      permission view = creator -> create_terminal + assigned_profile -> view_terminal
+  }
+
+  definition resource/device_history{
+      relation creator: res_perm#create_terminal
+      relation assigned_profile: device_profile
+
+      permission view = creator -> create_terminal + assigned_profile -> view_device_history
+  }
+
+  definition resource/pos_permission{
+      relation profile: merchant_admin:*
+
+      permission view = profile
+  }
+
+tables: |-
+- name: customer
+  relationships: |-
+  - resource_type: merchant
+    resource_id_cols:
+    - id
+    relation: admin
+    subject_type: merchant_admin
+    subject_id_cols:
+    - id
+- name: outlets
+  relationships: |-
+  - resource_type: outlet
+    resource_id_cols:
+    - id
+    relation: merchant
+    subject_type: merchant
+    subject_id_cols:
+    - customer_id
+- name: deviceprofile
+  relationships: |-
+  - resource_type: device_profile
+    resource_id_cols:
+    - id
+    relation: outlet
+    subject_type: outlet
+    subject_id_cols:
+    - outlet_id
+- name: transactions
+  relationships: |-
+  - resource_type: resource/transaction
+    resource_id_cols:
+    - id
+    relation: creator
+    subject_type: device_profile
+    subject_id_cols:
+    - deviceprofile_id
+- name: terminals
+  relationships: |-
+  - resource_type: resource/terminal
+    resource_id_cols:
+    - id
+    relation: assigned_profile
+    subject_type: device_profile
+    subject_id_cols:
+    - deviceprofile_id
+- name: devices_history
+  relationships: |-
+  - resource_type: resource/device_history
+    resource_id_cols:
+    - id
+    relation: assigned_profile
+    subject_type: device_profile
+    subject_id_cols:
+    - device_profile_id
